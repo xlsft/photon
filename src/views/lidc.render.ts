@@ -74,7 +74,6 @@ export default async (ies: IES, planes = [0]): Promise<string> => {
     scales.push(`<text x="${size - 6}" y="${size - 6}" text-anchor="end">cd/klm</text>`)
     lines.push(`<circle cx="${ox}" cy="${oy}" r="${peak.toFixed(2)}" fill="none" stroke="${color.accent[0]}80" stroke-dasharray="4 2"/>`)
     scales.push(`<text x="${ox}" y="${oy + peak + 12}" text-anchor="middle" style="fill: ${color.accent[0]} !important; font-weight: 500;">${Math.floor(convertCd(max))}</text>`)
-    legends.push(`<tspan x="6" dy="10px" style="fill: ${color.accent[0]} !important">-- Peak</tspan>`)
 
     return /*svg*/`
         <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
