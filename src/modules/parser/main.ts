@@ -73,8 +73,30 @@ class IES {
      * the keyword section.
      */
     public tilt: 'NONE' | 'INCLUDE' | string = 'NONE'
-
+    
+    /**
+     * Candela values matrix corresponding to the photometric data.
+     *
+     * - Each sub-array corresponds to a single horizontal angle.
+     * - Values within each sub-array correspond to vertical angles.
+     * - The order of candela values must exactly match the order
+     *   of the vertical angles.
+     * - Successive horizontal planes are listed in sequence
+     *   according to the horizontal angles array.
+     * - The first candela value for each horizontal angle starts
+     *   a new sub-array (or line in the file).
+     * - Values may be continued on additional lines if needed.
+     *
+     * Example:
+     * [
+     *   [<candela values for all vertical angles at 1st horizontal angle>],
+     *   [<candela values for all vertical angles at 2nd horizontal angle>],
+     *   ...
+     *   [<candela values for all vertical angles at last horizontal angle>]
+     * ]
+     */
     public matrix: number[][]
+
 
     constructor (public content: string) {
         const lines = this.content.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
