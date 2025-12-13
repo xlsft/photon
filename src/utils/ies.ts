@@ -1,11 +1,12 @@
-import { IESUnits } from "./static/units.static.ts";
-import { IESProperties } from "./types/properties.types.ts";
-
+import { IESUnits } from "../static/units.static.ts";
+import { IESProperties } from "../types/properties.types.ts";
 
 /**
+ * Standard File Format for the Electronic Transfer of Photometric Data
  * 
+ * Based on *IESNA:LM-63-2002 RFC*
  */
-class IES {
+export class IES {
     /**
      * IESNA:LM-63-2002 (Section 5.1).
      *
@@ -154,7 +155,7 @@ class IES {
         const matrix: number[][] = [], linear_values: number[] = []
 
         while (linear_values.length < this.properties.total_vertical_angles * this.properties.total_horizontal_angles) {
-            const numbers = lines[i].trim().split(/\s+/).map(parseFloat)
+            const numbers = lines[i].trim().split(/\s+/).map((n) => parseFloat(n) * this.properties.candela_multiplier)
             linear_values.push(...numbers)
             i++
         }
