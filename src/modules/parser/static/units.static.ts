@@ -1,0 +1,1 @@
+export const IESUnits = { 1: 'ft', 2: 'm' } as const

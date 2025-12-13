@@ -1,0 +1,150 @@
+import { IESUnits } from "./static/units.static.ts";
+import { IESProperties } from "./types/properties.types.ts";
+
+
+/**
+ * 
+ */
+class IES {
+    /**
+     * IESNA:LM-63-2002 (Section 5.1).
+     *
+     * Must contain the string `IESNA:LM-63-2002`.
+     * This string distinguishes the file from other formats
+     * and marks the beginning of the photometric data.
+     */
+    public version: string
+
+    /**
+     * Keyword section (Section 5.2).
+     *
+     * Following `IESNA:LM-63-2002` and prior to `TILT=`,
+     * any number of defined IES keywords may be used
+     * (see Annex A and B). Each keyword line must begin
+     * with an appropriate keyword.
+     *
+     * Required keywords:
+     * - [TEST]       Test report number
+     * - [TESTLAB]   Photometric testing laboratory
+     * - [ISSUEDATE] Date the manufacturer issued the file
+     * - [MANUFAC]   Manufacturer of the luminaire
+     *
+     * Suggested minimum optional keywords:
+     * - [LUMCAT]     Luminaire catalog number
+     * - [LUMINAIRE] Luminaire description
+     * - [LAMPCAT]   Lamp catalog number
+     * - [LAMP]      Lamp description (type, wattage, size, etc.)
+     */
+    public keywords: Record<string, string>
+
+    /**
+     * Set of photometric properties defined in
+     * Sections 5.4 through 5.13.
+     */
+    public properties: IESProperties
+
+    /**
+     * Tilt definition (Section 5.3).
+     *
+     * Indicates whether lamp output varies as a function
+     * of luminaire tilt angle and, if so, where the tilt
+     * multiplier information is located.
+     *
+     * Possible values:
+     * - `TILT=NONE`
+     *   Lamp output does not vary with tilt angle
+     *   (skip to Section 5.4).
+     *
+     * - `TILT=INCLUDE`
+     *   Tilt information is included in this photometric file.
+     *
+     * - `TILT=<filename>`
+     *   Tilt information is stored in a separate file.
+     *   The filename must end with `.tlt` or `.TLT`
+     *   (extension is not case-sensitive), e.g. `MH100V.TLT`.
+     *
+     * The format of tilt information is identical whether
+     * it is included in this file or stored separately
+     * (see Annex F).
+     *
+     * Note:
+     * The phrase `TILT=` must appear exactly as shown
+     * and begin in column 1, as it signifies the end of
+     * the keyword section.
+     */
+    public tilt: 'NONE' | 'INCLUDE' | string = 'NONE'
+
+    public matrix: number[][]
+
+    constructor (public content: string) {
+        const lines = this.content.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+
+        this.version = lines[0]
+        this.keywords = {}
+
+        let i = 1; for (; i < lines.length; i++) {
+            const line = lines[i]
+            if (line.startsWith('TILT=')) { this.tilt = line.slice(5); i++; break }
+            if (line.startsWith('[')) {
+                const end = line.indexOf(']'); if (end === -1) continue
+                const key = line.slice(1, end).toLowerCase()
+                const value = line.slice(end + 1).trim()
+                if (this.keywords[key]) this.keywords[key] += '\n' + value
+                else this.keywords[key] = value
+            }
+        }
+        if (this.tilt === 'INCLUDE') i += 4 // Skip tilt parsing (Section 5.0)
+
+        this.properties ||= {} as IESProperties
+
+        const [ lamps, lumens_per_lamp, candela_multiplier, total_vertical_angles, total_horizontal_angles, photometric_type, units_type, width, length, height ] = lines[i].split(/\s+/).map(parseFloat)
+        this.properties = {
+            ...this.properties,
+            lamps, lumens_per_lamp, candela_multiplier, total_vertical_angles, total_horizontal_angles, photometric_type, units_type, width, length, height,
+            unit: IESUnits[units_type as keyof typeof IESUnits],
+        }
+
+        i += 1; const [ ballast_factor, future_use, input_watts ] = lines[i].split(/\s+/).map(parseFloat)
+        this.properties = {
+            ...this.properties,
+            ballast_factor, future_use, input_watts
+        }
+        
+        i += 1; const vertical_angles: number[] = []; let vertical_angles_collected = 0; while (vertical_angles_collected < this.properties.total_vertical_angles) {
+            const angles = lines[i].trim().split(/\s+/).map(parseFloat)
+            vertical_angles.push(...angles)
+            vertical_angles_collected += angles.length
+            i++
+        }
+
+        const horizontal_angles: number[] = []; let horizontal_angles_collected = 0; while (horizontal_angles_collected < this.properties.total_horizontal_angles) {
+            const angles = lines[i].trim().split(/\s+/).map(parseFloat)
+            horizontal_angles.push(...angles)
+            horizontal_angles_collected += angles.length
+            i++
+        }
+
+        this.properties = {
+            ...this.properties,
+            vertical_angles, horizontal_angles
+        }
+
+        const matrix: number[][] = [], linear_values: number[] = []
+
+        while (linear_values.length < this.properties.total_vertical_angles * this.properties.total_horizontal_angles) {
+            const numbers = lines[i].trim().split(/\s+/).map(parseFloat)
+            linear_values.push(...numbers)
+            i++
+        }
+
+        for (let h = 0; h < this.properties.total_horizontal_angles; h++) {
+            matrix.push(linear_values.slice(h * this.properties.total_vertical_angles, (h + 1) * this.properties.total_vertical_angles))
+        }
+
+        this.matrix = matrix
+
+    }
+
+}
+
+export const useIES = (content: string) => new IES(content)
