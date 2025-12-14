@@ -1,4 +1,4 @@
-import { useIES } from "../src/utils/ies.ts";
+import { IES, useIES } from "../src/utils/ies.ts";
 import renderPlidc from "../src/views/plidc.render.ts";
 import renderLlidc from "../src/views/llidc.render.ts";
 import renderLftd from "../src/views/lftd.render.ts";

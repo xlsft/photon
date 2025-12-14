@@ -117,12 +117,15 @@ export class IES {
         }
         if (this.tilt === 'INCLUDE') i += 4 // Skip tilt parsing (Section 5.0)
 
-        this.properties ||= {} as IESProperties
+        this.properties ||= {
+            luminare_type: 'panel'
+        } as IESProperties
 
         const [ lamps, lumens_per_lamp, candela_multiplier, total_vertical_angles, total_horizontal_angles, photometric_type, units_type, width, length, height ] = lines[i].split(/\s+/).map(parseFloat)
         this.properties = {
             ...this.properties,
-            lamps, lumens_per_lamp, candela_multiplier, total_vertical_angles, total_horizontal_angles, photometric_type, units_type, width, length, height,
+            lamps, lumens_per_lamp, candela_multiplier, total_vertical_angles, total_horizontal_angles, photometric_type, units_type, 
+            width: Math.abs(width), length: Math.abs(length), height: Math.abs(height),
             unit: IESUnits[units_type as keyof typeof IESUnits],
         }
 
@@ -168,6 +171,7 @@ export class IES {
         const color_temperature_text = content.match(/(?<!\d)(\d{3,5})\s*K\b/i)
         this.properties.color_temperature = color_temperature_text ? Number(color_temperature_text[1]) : undefined
 
+        this.properties.luminare_type = this.properties.width / this.properties.length > 0.85 && this.properties.width / this.properties.length < 1.15 ? 'spot' : 'panel'
     }
 
     /**

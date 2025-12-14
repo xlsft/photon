@@ -3,15 +3,11 @@ import { alias } from "../static/alias.static.ts";
 import { color } from "../static/color.static.ts";
 import { size, padding } from "../static/pos.static.ts";
 import { defineSvgChart } from "../utils/chart.ts";
-import { iso } from "../utils/iso.ts";
+import { cos30, iso, norm, sin30 } from "../utils/iso.ts";
 import { temp } from "../utils/temp.ts";
 import { useColor } from 'jsr:@xlsft/nuxt@1.1.34'
 
 const { modify } = useColor()
-const norm = (v: { x: number, y: number }, l: number) => {
-    const vector = Math.sqrt(v.x * v.x + v.y * v.y);
-    return { x: v.x / vector * l, y: v.y / vector * l };
-};
 
 /**
  * ## Light fixture technical drawing
@@ -34,6 +30,7 @@ export default async (ies: IES): Promise<string> => {
         iso(0, length, height),     // H — near top right 
     ]; const [ A, B, C, D, E, F, G, H ] = points
 
+    const cell = .1, cells = Math.ceil(size / cell);
     const xs = points.map(p => p.x), ys = points.map(p => p.y)
     const minx = Math.min(...xs), maxx = Math.max(...xs)
     const miny = Math.min(...ys), maxy = Math.max(...ys)
@@ -41,52 +38,54 @@ export default async (ies: IES): Promise<string> => {
     const scale = Math.min((size * 0.8) / w, (size * 0.8) / h);
     const ox = size / 2 - (minx + w / 2) * scale, oy = size / 2 - (miny + h / 2) * scale
 
-    const axis = [
+    const vectors = [
         norm({ x: B.x - A.x, y: B.y - A.y }, size / scale),
         norm({ x: D.x - A.x, y: D.y - A.y }, size / scale),
-        norm({ x: E.x - A.x, y: E.y - A.y }, size / scale)
-    ]; const [ X, Y, Z ] = axis
+        norm({ x: E.x - A.x, y: E.y - A.y }, size / scale),
+        norm({ x: B.x - A.x, y: B.y - A.y }, cell),
+        norm({ x: D.x - A.x, y: D.y - A.y }, cell)
+    ]; const [ X, Y, Z, XV, YV ] = vectors
 
-    const gridSize = 20; // размер ячейки сетки
-const gridCount = 50; // количество линий в каждой оси
+    const grid: string[] = []; for (let i = 0; i <= cells; i++) {
+        const ox = { x: YV.x * i, y: YV.y * i }, oy = { x: XV.x * i, y: XV.y * i };
+        const xp1 = { x: A.x + ox.x, y: A.y + ox.y }, xp2 = { x: xp1.x + XV.x * cells, y: xp1.y + XV.y * cells };
+        const yp1 = { x: A.x + oy.x, y: A.y + oy.y }, yp2 = { x: yp1.x + YV.x * cells, y: yp1.y + YV.y * cells };
+        grid.push(`<line x1="${xp1.x}" y1="${xp1.y}" x2="${xp2.x}" y2="${xp2.y}" />`);
+        grid.push(`<line x1="${yp1.x}" y1="${yp1.y}" x2="${yp2.x}" y2="${yp2.y}" />`);
+    }
 
-const gridLines: string[] = []
+    const circle = ies.properties.luminare_type === 'spot' ? Array.from({ length: 32 }, (_, i) => {
+        const angle = (i / 32) * 2 * Math.PI;
+        return iso((width / 2) * Math.cos(angle) + width / 2, (width / 2) * Math.sin(angle) + length / 2, height);
+    }) : [];
 
-for (let i = -gridCount; i <= gridCount; i++) {
-    // линии вдоль X (параллельно Y)
-    const p1 = iso(i * gridSize, -gridCount * gridSize, 0)
-    const p2 = iso(i * gridSize, gridCount * gridSize, 0)
-    gridLines.push(`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" />`)
-
-    // линии вдоль Y (параллельно X)
-    const p3 = iso(-gridCount * gridSize, i * gridSize, 0)
-    const p4 = iso(gridCount * gridSize, i * gridSize, 0)
-    gridLines.push(`<line x1="${p3.x}" y1="${p3.y}" x2="${p4.x}" y2="${p4.y}" />`)
-}
-
-
-    return await defineSvgChart(/*svg*/`
-        <g id="axis" transform="translate(${ox},${oy}) scale(${scale})" stroke-width="${1.2/scale}" vector-effect="non-scaling-stroke">
-            <line stroke="${color.axis.x}" x1="${A.x}" y1="${A.y}" x2="${A.x+X.x}" y2="${A.y+X.y}" />
-            <line stroke="${color.axis.y}" x1="${A.x}" y1="${A.y}" x2="${A.x+Y.x}" y2="${A.y+Y.y}" />
-            <line stroke="${color.axis.z}" x1="${A.x}" y1="${A.y}" x2="${A.x+Z.x}" y2="${A.y+Z.y}" />
-        </g>
-        <g id="lines" stroke="${color.stroke}80" transform="translate(${ox},${oy}) scale(${scale})" stroke-width="${1.2/scale}" vector-effect="non-scaling-stroke">
-            ${gridLines.join('\n')}
-        </g>
-        <g id="graphs" transform="translate(${ox},${oy}) scale(${scale})">
-            <polygon fill="${modify.lightness.add(color.stroke, -10)}" points="${[A, D, H, E].map(p => `${p.x},${p.y}`).join(" ")}" />
-            <polygon fill="${modify.lightness.add(color.stroke, -20)}" points="${[A, B, F, E].map(p => `${p.x},${p.y}`).join(" ")}" />
-            <polygon fill="${modify.lightness.add(color.stroke, 10)}" points="${[C, D, H, G].map(p => `${p.x},${p.y}`).join(" ")}" />
-            <polygon fill="${modify.lightness.add(color.stroke, 0)}" points="${[B, C, G, F].map(p => `${p.x},${p.y}`).join(" ")}" />
-            <polygon fill="${temperature}" points="${[E, F, G, H].map(p => `${p.x},${p.y}`).join(" ")}" />
-            <g fill="none" stroke="${color.stroke}" stroke-width="${1 / scale}" vector-effect="non-scaling-stroke">
-                <polygon points="${[E, F, G, H].map(p => `${p.x},${p.y}`).join(" ")}" />
-                <line x1="${B.x}" y1="${B.y}" x2="${F.x}" y2="${F.y}" />
-                <line x1="${C.x}" y1="${C.y}" x2="${G.x}" y2="${G.y}" />
-                <line x1="${D.x}" y1="${D.y}" x2="${H.x}" y2="${H.y}" />
-                <line x1="${D.x}" y1="${D.y}" x2="${C.x}" y2="${C.y}" />
-            </g>
+    return await defineSvgChart(/*svg*/ `
+        <g id="axis" transform="translate(${ox},${oy}) scale(${scale})" stroke-width="${1.2/scale}" vector-effect="non-scaling-stroke"> 
+            <line stroke="${color.axis.x}" x1="${A.x}" y1="${A.y}" x2="${A.x+X.x}" y2="${A.y+X.y}" /> 
+            <line stroke="${color.axis.y}" x1="${A.x}" y1="${A.y}" x2="${A.x+Y.x}" y2="${A.y+Y.y}" /> 
+            <line stroke="${color.axis.z}" x1="${A.x}" y1="${A.y}" x2="${A.x+Z.x}" y2="${A.y+Z.y}" /> 
+        </g> 
+        <g id="lines" stroke="${color.stroke}80" transform="translate(${ox},${oy}) scale(${scale})" stroke-width="${1/scale}" vector-effect="non-scaling-stroke">
+            ${grid.join("\n")} 
+        </g> 
+        <g id="graphs" transform="translate(${ox},${oy}) scale(${scale})"> 
+            <polygon fill="${modify.lightness.add(color.stroke, -10)}" points="${[A, D, H, E].map(p => `${p.x},${p.y}`).join(" ")}" /> 
+            <polygon fill="${modify.lightness.add(color.stroke, -20)}" points="${[A, B, F, E].map(p => `${p.x},${p.y}`).join(" ")}" /> 
+            <polygon fill="${modify.lightness.add(color.stroke, 10)}" points="${[C, D, H, G].map(p => `${p.x},${p.y}`).join(" ")}" /> 
+            <polygon fill="${modify.lightness.add(color.stroke, 0)}" points="${[B, C, G, F].map(p => `${p.x},${p.y}`).join(" ")}" /> 
+            <polygon fill="${modify.lightness.add(color.stroke, 100)}" points="${[E, F, G, H].map(p => `${p.x},${p.y}`).join(" ")}" /> 
+            ${ies.properties.luminare_type === 'panel' ?
+                `<polygon fill="${temperature}" points="${[E, F, G, H].map(p => `${p.x},${p.y}`).join(" ")}" />`
+                :
+                `<polygon fill="${temperature}" points="${circle.map(p => `${p.x},${p.y}`).join(" ")}" />`
+            } 
+            <g fill="none" stroke="${color.stroke}" stroke-width="${1 / scale}" vector-effect="non-scaling-stroke"> 
+                <polygon points="${[E, F, G, H].map(p => `${p.x},${p.y}`).join(" ")}" /> 
+                <line x1="${B.x}" y1="${B.y}" x2="${F.x}" y2="${F.y}" /> 
+                <line x1="${C.x}" y1="${C.y}" x2="${G.x}" y2="${G.y}" /> 
+                <line x1="${D.x}" y1="${D.y}" x2="${H.x}" y2="${H.y}" /> 
+                <line x1="${D.x}" y1="${D.y}" x2="${C.x}" y2="${C.y}" /> 
+            </g> 
         </g>
     `)
 }

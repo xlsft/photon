@@ -138,4 +138,11 @@ export type IESProperties = {
      */
     color_temperature?: number
 
+    /**
+     * Custom property for physical type of luminare
+     *
+     * Not supported by IES, calculated from properties, can be inaccurate
+     */
+    luminare_type: 'panel' | 'spot'
+
 }
