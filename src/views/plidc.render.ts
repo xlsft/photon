@@ -98,7 +98,7 @@ export default async (ies: IES, planes = [0, 90], mode: 'cd' | 'cdklm' = 'cd'): 
     // Max
     legends.push(`<text x="${padding}" y="${size - padding}" text-anchor="start" style="font-weight: 500; fill: ${color.accent[0]}">-- Max</text>`)
     lines.push(`<circle cx="${ox}" cy="${oy}" r="${(max * scale).toFixed(2)}" fill="none" stroke="${color.accent[0]}" stroke-dasharray="4 2"/>`)
-    scales.push(`<text x="${ox}" y="${oy + max * scale + 12}" text-anchor="middle" style="fill: ${color.accent[0]} !important; font-weight: 500; opacity: 1 !important;">${ies.value(max, mode)} <tspan dy="4px" text-anchor="middle" x="${ox-0.5}" style="font-size: 4px !important; font-weight: 800;">${alias[mode]}</tspan></text>`)
+    scales.push(`<text x="${ox + 1}" y="${oy + max * scale + 12}" text-anchor="middle" style="fill: ${color.accent[0]} !important; font-weight: 500; opacity: 1 !important;">${ies.value(max, mode)} <tspan dy="4px" text-anchor="middle" x="${ox-0.5}" style="font-size: 4px !important; font-weight: 800;">${alias[mode]}</tspan></text>`)
 
     return await defineSvgChart(/*svg*/`
         <g id="lines">${lines.filter(Boolean).join()}</g>
