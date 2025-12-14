@@ -9,15 +9,19 @@ import { useColor } from 'jsr:@xlsft/nuxt@1.1.34'
 
 const { modify } = useColor()
 
+
+
 /**
  * ## Light fixture technical drawing
  * 
  * 3D physical isometric projection of lamp
  */
-export default async (ies: IES): Promise<string> => {
+export default async (ies: IES, mode: 'cd' | 'cdklm' = 'cd'): Promise<string> => {
 
     const { width, height, length } = ies.properties
     const temperature = temp(ies.properties.color_temperature)
+    const peak = ies.value(Math.max(...ies.matrix.flat()), mode);
+    console.log(peak)
 
     const points = [
         iso(0, 0, 0),               // A — far bottom right
@@ -59,6 +63,78 @@ export default async (ies: IES): Promise<string> => {
         return iso((width / 2) * Math.cos(angle) + width / 2, (width / 2) * Math.sin(angle) + length / 2, height);
     }) : [];
 
+    const scales: string[] = []
+
+    const arrow = (a: { x: number, y: number }, b: { x: number, y: number }, label: string, offset = 8) => {
+        const dx = b.x - a.x, dy = b.y - a.y
+        const len = Math.hypot(dx, dy); if (!len) return ''
+        const nx = -dy / len, ny = dx / len
+        const ox = nx * offset / scale, oy = ny * offset / scale
+        const a1 = { x: a.x + ox, y: a.y + oy }, b1 = { x: b.x + ox, y: b.y + oy }
+        const al = 5 / scale, aw = 2.5 / scale
+        const ux = dx / len, uy = dy / len
+        const mx = (a1.x + b1.x) / 2, my = (a1.y + b1.y) / 2
+        const to = 6 / scale, tx = mx + nx * to, ty = my + ny * to
+        const angle = Math.atan2(b1.y - a1.y, b1.x - a1.x) * 180 / Math.PI
+
+        const head = (p: { x: number, y: number }, dir: 1 | -1) => `
+            <line stroke="${color.stroke}" x1="${p.x + ux * al * dir + nx * aw}" y1="${p.y + uy * al * dir + ny * aw}" x2="${p.x}" y2="${p.y}" />
+            <line stroke="${color.stroke}" x1="${p.x + ux * al * dir - nx * aw}" y1="${p.y + uy * al * dir - ny * aw}" x2="${p.x}" y2="${p.y}" />
+        `
+
+        return `
+            <g>
+                <line stroke="${color.stroke}" x1="${a1.x}" y1="${a1.y}" x2="${b1.x}" y2="${b1.y}" />
+                ${head(a1, 1)} ${head(b1, -1)}
+                <text
+                    x="${tx}" y="${ty}"
+                    text-anchor="middle"
+                    dominant-baseline="central"
+                    style="font-size: ${6 / scale}px !important; text-rendering: geometricPrecision; font-weight: 50 !important; filter: none !important"
+                    fill="${color.text}"
+                    transform="rotate(${angle} ${tx} ${ty})"
+                >
+                    ${label}
+                </text>
+            </g>
+        `
+    }
+
+
+
+
+    scales.push(arrow(D, C, `${width.toFixed(3)}${alias[ies.properties.unit]}`))
+    scales.push(arrow(C, B, `${length.toFixed(3)}${alias[ies.properties.unit]}`))
+    scales.push(arrow(H, D, `${height.toFixed(3)}${alias[ies.properties.unit]}`))
+
+
+
+
+    const legends: string[] = []
+
+    console.log(ies.keywords)
+    legends.push(`<text x="${padding}" y="${padding * 2}" style="fill: ${color.text} !important; font-weight: 500;">
+        ${ies.keywords.luminaire}
+        <tspan style="opacity: .75"> | ${ies.keywords.manufac}</tspan>
+    </text>`)
+    
+    legends.push(`<text x="${size - padding}" y="${padding * 2}" text-anchor="end" style="fill: ${color.text} !important; opacity: .75 !important; font-weight: 500;">
+        ${ies.keywords.testlab}
+    </text>`)
+
+    const values: Record<string, string | undefined> = {
+        'Power': ies.properties.input_watts ? `${ies.properties.input_watts}${alias['w']}` : undefined,
+        'Peak intensity': peak ? `${peak} ${alias[mode]}` : undefined,
+        'Temperature':  ies.properties.color_temperature ? `${ies.properties.color_temperature}${alias['k']}` : undefined
+    }
+
+    legends.push(`<text x="${padding - .5}" y="${padding * 2 + 10}" text-anchor="start" style="fill: ${color.text} !important; opacity: .75 !important; font-weight: 500;">
+        ${Object.entries(values).map(([ key, value ]) => {
+            if (!value) return ''
+            return `<tspan x="${padding - .5}" fill="${color.text}" style="opacity: 1 !important" dy="10px" text-anchor="start"><tspan>${key}: </tspan><tspan style="opacity: .75">${value}</tspan></tspan>`
+        }).join('\n')}
+    </text>`)
+
     return await defineSvgChart(/*svg*/ `
         <g id="axis" transform="translate(${ox},${oy}) scale(${scale})" stroke-width="${1.2/scale}" vector-effect="non-scaling-stroke"> 
             <line stroke="${color.axis.x}" x1="${A.x}" y1="${A.y}" x2="${A.x+X.x}" y2="${A.y+X.y}" /> 
@@ -87,5 +163,18 @@ export default async (ies: IES): Promise<string> => {
                 <line x1="${D.x}" y1="${D.y}" x2="${C.x}" y2="${C.y}" /> 
             </g> 
         </g>
+        <g
+    id="scales"
+    transform="translate(${ox},${oy}) scale(${scale})"
+    fill="none"
+    stroke="${color.text}"
+    stroke-width="${1 / scale}"
+    vector-effect="non-scaling-stroke"
+    style="font-size: ${10 / scale}px; fill: ${color.text};"
+>
+    ${scales.join("\n")}
+</g>
+
+        <g id="legends">${legends.filter(Boolean).join()}</g>
     `)
 }
