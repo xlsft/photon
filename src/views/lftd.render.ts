@@ -3,7 +3,7 @@ import { alias } from "../static/alias.static.ts";
 import { color } from "../static/color.static.ts";
 import { size, padding } from "../static/pos.static.ts";
 import { defineSvgChart } from "../utils/chart.ts";
-import { cos30, iso, norm, sin30 } from "../utils/iso.ts";
+import { iso, norm } from "../utils/iso.ts";
 import { temp } from "../utils/temp.ts";
 import { useColor } from 'jsr:@xlsft/nuxt@1.1.34'
 
