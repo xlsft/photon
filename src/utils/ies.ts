@@ -98,7 +98,6 @@ export class IES {
      */
     public matrix: number[][]
 
-
     constructor (public content: string) {
         const lines = this.content.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
 
@@ -166,6 +165,33 @@ export class IES {
 
         this.matrix = matrix
 
+        const color_temperature_text = content.match(/(?<!\d)(\d{3,5})\s*K\b/i)
+        this.properties.color_temperature = color_temperature_text ? Number(color_temperature_text[1]) : undefined
+
+    }
+
+    /**
+     * Returns index of horizontal plane based on angle
+     * @param angle 
+     * @returns 
+     */
+    public index(angle: number) {
+        const angles = this.properties.horizontal_angles;
+        let idx = 0;
+        let min = Infinity;
+        for (let i = 0; i < angles.length; i++) {
+            const d = Math.abs(angles[i] - angle);
+            if (d < min) { min = d; idx = i; }
+        }
+        return idx;
+    }
+
+    public value(cd: number, mode: 'cd' | 'cdklm') {
+        const convert = {
+            'cd': (cd: number) => Math.floor(cd),
+            'cdklm': (cd: number) => Math.floor(cd * (1000 / (this.properties.lamps * this.properties.lumens_per_lamp)))
+        }
+        return convert[mode](cd)
     }
 
 }

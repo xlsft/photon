@@ -131,4 +131,11 @@ export type IESProperties = {
      */
     horizontal_angles: number[]
 
+    /**
+     * Custom property for color temperature in kelvins
+     *
+     * Not supported by IES, parsed from text content of IES file, can be inaccurate
+     */
+    color_temperature?: number
+
 }
