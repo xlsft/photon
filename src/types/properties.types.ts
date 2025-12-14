@@ -145,4 +145,11 @@ export type IESProperties = {
      */
     luminare_type: 'panel' | 'spot'
 
+    /**
+     * Custom property for peak candela value
+     *
+     * Not supported by IES, based on candela matrix and is multiplied by candela_multiplier
+     */
+    peak_value: number
+
 }

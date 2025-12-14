@@ -9,8 +9,6 @@ import { useColor } from 'jsr:@xlsft/nuxt@1.1.34'
 
 const { modify } = useColor()
 
-
-
 /**
  * ## Light fixture technical drawing
  * 
@@ -20,8 +18,7 @@ export default async (ies: IES, mode: 'cd' | 'cdklm' = 'cd'): Promise<string> =>
 
     const { width, height, length } = ies.properties
     const temperature = temp(ies.properties.color_temperature)
-    const peak = ies.value(Math.max(...ies.matrix.flat()), mode);
-    console.log(peak)
+    const peak = ies.value(ies.properties.peak_value, mode);
 
     const points = [
         iso(0, 0, 0),               // A — far bottom right
@@ -100,19 +97,12 @@ export default async (ies: IES, mode: 'cd' | 'cdklm' = 'cd'): Promise<string> =>
         `
     }
 
-
-
-
     scales.push(arrow(D, C, `${width.toFixed(3)}${alias[ies.properties.unit]}`))
     scales.push(arrow(C, B, `${length.toFixed(3)}${alias[ies.properties.unit]}`))
     scales.push(arrow(H, D, `${height.toFixed(3)}${alias[ies.properties.unit]}`))
 
-
-
-
     const legends: string[] = []
 
-    console.log(ies.keywords)
     legends.push(`<text x="${padding}" y="${padding * 2}" style="fill: ${color.text} !important; font-weight: 500;">
         ${ies.keywords.luminaire}
         <tspan style="opacity: .75"> | ${ies.keywords.manufac}</tspan>

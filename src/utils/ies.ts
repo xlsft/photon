@@ -172,6 +172,8 @@ export class IES {
         this.properties.color_temperature = color_temperature_text ? Number(color_temperature_text[1]) : undefined
 
         this.properties.luminare_type = this.properties.width / this.properties.length > 0.85 && this.properties.width / this.properties.length < 1.15 ? 'spot' : 'panel'
+
+        this.properties.peak_value = Math.max(...this.matrix.flat())
     }
 
     /**
